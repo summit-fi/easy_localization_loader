@@ -16,7 +16,7 @@ dependencies:
       url: https://github.com/AlxSidenko/easy_localization.git
       ref: develop
 
-  connectivity_plus: ^5.0.1
+  connectivity_plus: ^6.0.3
   csv: ^5.0.1
   flutter: { sdk: flutter }
   http: ^1.1.0
