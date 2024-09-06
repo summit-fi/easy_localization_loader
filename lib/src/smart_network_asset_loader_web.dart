@@ -3,6 +3,7 @@ import 'dart:html';
 import 'dart:ui' as ui;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization_loader/src/smart_network_asset_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
@@ -61,7 +62,7 @@ class SmartNetworkAssetLoader extends AssetLoader {
 
   Future<String> loadFromNetwork(String localeName) async {
     String url = localeUrl(localeName);
-    url = url + '' + localeName + '.json';
+    url = url + '' + localeName + '.json'.withoutCache();
 
     try {
       final response =
