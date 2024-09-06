@@ -8,6 +8,12 @@ import 'package:path_provider/path_provider.dart' as paths;
 
 import 'package:flutter/services.dart';
 
+extension CacheInvalidator on String {
+  String withoutCache() {
+    return '$this?v=${DateTime.now().millisecondsSinceEpoch}';
+  }
+}
+
 /// ```dart
 /// SmartNetworkAssetLoader(
 ///           assetsPath: 'assets/translations',
@@ -85,7 +91,7 @@ class SmartNetworkAssetLoader extends AssetLoader {
   Future<String> loadFromNetwork(String localeName) async {
     String url = localeUrl(localeName);
 
-    url = url + '' + localeName + '.json';
+    url = url + '' + localeName + '.json'.withoutCache();
 
     try {
       final response =
