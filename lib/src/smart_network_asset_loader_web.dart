@@ -48,7 +48,7 @@ class SmartNetworkAssetLoader extends AssetLoader {
 
   Future<bool> isInternetConnectionAvailable() async {
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult[0] == ConnectivityResult.none) {
       return false;
     } else {
       try {
