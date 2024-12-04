@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:ui';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart' as paths;
-
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
+import 'package:path_provider/path_provider.dart' as paths;
+import 'package:universal_io/io.dart';
 
 extension CacheInvalidator on String {
   String withoutCache() {
@@ -23,27 +24,37 @@ extension CacheInvalidator on String {
 ///         )
 /// ```
 class SmartNetworkAssetLoader extends AssetLoader {
-  final Function localeUrl;
+  SmartNetworkAssetLoader({
+    required this.localeUrl,
+    this.timeout = const Duration(seconds: 30),
+    required this.assetsPath,
+    this.localCacheDuration = const Duration(days: 1),
+  });
 
+  final String Function(String) localeUrl;
   final Duration timeout;
-
   final String assetsPath;
-
   final Duration localCacheDuration;
 
-  SmartNetworkAssetLoader(
-      {required this.localeUrl,
-      this.timeout = const Duration(seconds: 30),
-      required this.assetsPath,
-      this.localCacheDuration = const Duration(days: 1)});
-
   @override
-  Future<Map<String, dynamic>> load(String localePath, Locale locale) async {
-    var string = '';
+  Future<Map<String, dynamic>> load(String path, Locale locale) async {
+    String string = '';
 
-    // try loading local previously-saved localization file
-    if (await localTranslationExists(locale.toString())) {
-      string = await loadFromLocalFile(locale.toString());
+    // // try loading local previously-saved localization file
+    // if (await localTranslationExists(locale.toString())) {
+    //   string = await loadFromLocalFile(locale.toString());
+    // }
+    String assetString = '';
+    final Map<String, dynamic> result = <String, dynamic>{};
+
+    // Load from assets to another map
+    if (assetString == '') {
+      assetString = await rootBundle.loadString('$assetsPath/$locale.json');
+      final Map<String, dynamic> assetMap =
+          jsonDecode(assetString) as Map<String, dynamic>;
+      if (assetMap.isNotEmpty) {
+        result.addAll(assetMap);
+      }
     }
 
     // no local or failed, check if internet and download the file
@@ -53,30 +64,33 @@ class SmartNetworkAssetLoader extends AssetLoader {
 
     // local cache duration was reached or no internet access but prefer local file to assets
     if (string == '' &&
-        await localTranslationExists(locale.toString(),
-            ignoreCacheDuration: true)) {
+        await localTranslationExists(
+          locale.toString(),
+          ignoreCacheDuration: true,
+        )) {
       string = await loadFromLocalFile(locale.toString());
     }
 
-    // still nothing? Load from assets
-    if (string == '') {
-      string = await rootBundle
-          .loadString(assetsPath + '/' + locale.toString() + '.json');
-    }
+    final Map<String, dynamic> stringMap =
+        json.decode(string) as Map<String, dynamic>;
+
+    result.addAll(stringMap);
 
     // then returns the json file
-    return json.decode(string);
+    return result;
   }
 
-  Future<bool> localeExists(String localePath) => Future.value(true);
+  Future<bool> localeExists(String localePath) => Future<bool>.value(true);
 
   Future<bool> isInternetConnectionAvailable() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
+    final List<ConnectivityResult> connectivityResult =
+        await Connectivity().checkConnectivity();
     if (connectivityResult[0] == ConnectivityResult.none) {
       return false;
     } else {
       try {
-        final result = await InternetAddress.lookup('google.com');
+        final List<InternetAddress> result =
+            await InternetAddress.lookup('google.com');
         if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
           return true;
         }
@@ -91,14 +105,18 @@ class SmartNetworkAssetLoader extends AssetLoader {
   Future<String> loadFromNetwork(String localeName) async {
     String url = localeUrl(localeName);
 
-    url = url + '' + localeName + '.json'.withoutCache();
+    url = '$url$localeName${'.json'.withoutCache()}';
 
     try {
-      final response =
-          await Future.any([http.get(Uri.parse(url)), Future.delayed(timeout)]);
+      final Response? response = await Future.any(
+        <Future<http.Response?>>[
+          http.get(Uri.parse(url)),
+          Future<Response?>.delayed(timeout),
+        ],
+      );
 
       if (response != null && response.statusCode == 200) {
-        var content = utf8.decode(response.bodyBytes);
+        final String content = utf8.decode(response.bodyBytes);
 
         // check valid json before saving it
         if (json.decode(content) != null) {
@@ -107,26 +125,28 @@ class SmartNetworkAssetLoader extends AssetLoader {
         }
       }
     } catch (e) {
-      print(e.toString());
+      print(e);
     }
 
     return '';
   }
 
-  Future<bool> localTranslationExists(String localeName,
-      {bool ignoreCacheDuration = false}) async {
-    var translationFile = await getFileForLocale(localeName);
+  Future<bool> localTranslationExists(
+    String localeName, {
+    bool ignoreCacheDuration = false,
+  }) async {
+    final File translationFile = await getFileForLocale(localeName);
 
-    if (!await translationFile.exists()) {
+    if (!translationFile.existsSync()) {
       return false;
     }
 
     // don't check file's age
     if (!ignoreCacheDuration) {
-      var difference =
-          DateTime.now().difference(await translationFile.lastModified());
+      final Duration difference =
+          DateTime.now().difference(translationFile.lastModifiedSync());
 
-      if (difference > (localCacheDuration)) {
+      if (difference > localCacheDuration) {
         return false;
       }
     }
@@ -135,18 +155,18 @@ class SmartNetworkAssetLoader extends AssetLoader {
   }
 
   Future<String> loadFromLocalFile(String localeName) async {
-    return await (await getFileForLocale(localeName)).readAsString();
+    return (await getFileForLocale(localeName)).readAsString();
   }
 
   Future<void> saveTranslation(String localeName, String content) async {
-    var file = File(await getFilenameForLocale(localeName));
+    final File file = File(await getFilenameForLocale(localeName));
     await file.create(recursive: true);
     await file.writeAsString(content);
     return print('saved');
   }
 
   Future<String> get _localPath async {
-    final directory = await paths.getTemporaryDirectory();
+    final Directory directory = await paths.getTemporaryDirectory();
 
     return directory.path;
   }
