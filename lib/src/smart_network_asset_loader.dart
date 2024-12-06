@@ -71,10 +71,12 @@ class SmartNetworkAssetLoader extends AssetLoader {
       string = await loadFromLocalFile(locale.toString());
     }
 
-    final Map<String, dynamic> stringMap =
-        json.decode(string) as Map<String, dynamic>;
+    if (string.isNotEmpty) {
+      final Map<String, dynamic> stringMap =
+          json.decode(string) as Map<String, dynamic>;
 
-    result.addAll(stringMap);
+      result.addAll(stringMap);
+    }
 
     // then returns the json file
     return result;
