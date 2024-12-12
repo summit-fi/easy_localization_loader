@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -53,6 +54,7 @@ class SmartNetworkAssetLoader extends AssetLoader {
       final Map<String, dynamic> assetMap =
           jsonDecode(assetString) as Map<String, dynamic>;
       if (assetMap.isNotEmpty) {
+        log('Get ${assetMap.entries.length} keys from assets');
         result.addAll(assetMap);
       }
     }
@@ -74,6 +76,8 @@ class SmartNetworkAssetLoader extends AssetLoader {
     if (string.isNotEmpty) {
       final Map<String, dynamic> stringMap =
           json.decode(string) as Map<String, dynamic>;
+
+      log('Get ${stringMap.entries.length} keys from network');
 
       result.addAll(stringMap);
     }
