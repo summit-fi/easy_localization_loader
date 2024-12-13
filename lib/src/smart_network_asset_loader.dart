@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:ui';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -9,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'package:path_provider/path_provider.dart' as paths;
 import 'package:universal_io/io.dart';
+import 'package:easy_logger/easy_logger.dart';
 
 extension CacheInvalidator on String {
   String withoutCache() {
@@ -39,6 +39,8 @@ class SmartNetworkAssetLoader extends AssetLoader {
 
   @override
   Future<Map<String, dynamic>> load(String path, Locale locale) async {
+    final EasyLogger logger = EasyLogger(name: '🌎 Easy Localization');
+
     String string = '';
 
     // // try loading local previously-saved localization file
@@ -54,7 +56,7 @@ class SmartNetworkAssetLoader extends AssetLoader {
       final Map<String, dynamic> assetMap =
           jsonDecode(assetString) as Map<String, dynamic>;
       if (assetMap.isNotEmpty) {
-        log('Got ${assetMap.entries.length} keys from assets');
+        logger.debug('Got ${assetMap.entries.length} keys from assets');
         result.addAll(assetMap);
       }
     }
@@ -77,7 +79,7 @@ class SmartNetworkAssetLoader extends AssetLoader {
       final Map<String, dynamic> stringMap =
           json.decode(string) as Map<String, dynamic>;
 
-      log('Got ${stringMap.entries.length} keys from network');
+      logger.debug('Got ${stringMap.entries.length} keys from network');
 
       result.addAll(stringMap);
     }
